@@ -4540,11 +4540,11 @@ function FloatingAIAssist({ isMobile=false }) {
             left:isMobile ? "8px" : "50%",
             right:isMobile ? "8px" : "auto",
             top:isMobile ? "auto" : "50%",
-            bottom:isMobile ? "86px" : "94px",
+            bottom:isMobile ? "86px" : "auto",
             transform:isMobile ? "none" : "translate(-50%, -50%)",
             width:isMobile ? "auto" : panelWidth,
             maxHeight:isMobile?"min(62vh, 520px)":"70vh",
-            zIndex:259,
+            zIndex:310,
             ...card("rgba(77,163,255,.22)"),
             marginBottom:0,
             background:"linear-gradient(180deg, rgba(255,255,255,.98), rgba(244,249,255,.98))",
@@ -5239,7 +5239,7 @@ export default function App() {
 
         {/* ── Top utility bar ── */}
         <div style={{ background:"var(--chrome-strong)", padding:"8px 14px", display:"flex", alignItems:"center", gap:"10px", borderTop:"1px solid rgba(255,255,255,.10)", borderBottom:"1px solid rgba(255,255,255,.10)" }}>
-          <span style={{ fontSize:isMobile?"10px":"11px", color:dark?"var(--chrome-muted)":"#34506F", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:"600" }}>{getGovLabel(settings)} · MPA</span>
+          <span style={{ fontSize:isMobile?"10px":"11px", color:dark?"var(--chrome-muted)":"#34506F", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:"600" }}>{getGovLabel(settings)}</span>
           <div style={{ flex:1 }}/>
           {!isMobile && <span style={{ fontSize:"11px", color:dark?"var(--chrome-muted)":"#486684", fontFamily:"monospace" }}>
             🗓 {liveNow.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})} &nbsp; 🕐 {liveNow.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true})} IST
