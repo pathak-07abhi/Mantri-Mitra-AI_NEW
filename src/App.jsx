@@ -4408,7 +4408,6 @@ function FloatingAIAssist({ isMobile=false }) {
   const [ans, setAns] = useState("");
   const [loading, setLoading] = useState(false);
   const dragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0, moved:false, suppressClick:false });
-  const panelDragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0 });
   const prompts = [
     "Draft a constituency update for road repair progress",
     "Summarize the top action items from today's review meeting",
@@ -4438,14 +4437,11 @@ function FloatingAIAssist({ isMobile=false }) {
   const defaultBottom = isMobile ? 94 : 22;
   const viewport = typeof window !== "undefined" ? { w: window.innerWidth, h: window.innerHeight } : { w: 390, h: 844 };
   const [launcherPos, setLauncherPos] = useState(() => ({ x:null, y:null }));
-  const [panelPos, setPanelPos] = useState(() => ({ x:null, y:null }));
   const currentX = launcherPos.x ?? (viewport.w - launcherSize - defaultRight);
   const currentY = launcherPos.y ?? (viewport.h - launcherSize - defaultBottom);
   const panelPixelWidth = isMobile ? Math.max(280, viewport.w - 16) : 360;
-  const defaultPanelX = isMobile ? 8 : Math.max(12, currentX - panelPixelWidth + launcherSize);
-  const defaultPanelY = isMobile ? Math.max(96, currentY - 360) : Math.max(88, currentY - 260);
-  const panelX = panelPos.x ?? defaultPanelX;
-  const panelY = panelPos.y ?? defaultPanelY;
+  const panelX = isMobile ? 8 : Math.max(12, currentX - panelPixelWidth + launcherSize);
+  const panelY = isMobile ? Math.max(96, currentY - 360) : Math.max(88, currentY - 260);
   const panelWidth = `${panelPixelWidth}px`;
 
   useEffect(() => {
@@ -4459,19 +4455,10 @@ function FloatingAIAssist({ isMobile=false }) {
           y: Math.min(Math.max(8, prev.y), maxY),
         };
       });
-      setPanelPos(prev => {
-        if (prev.x == null || prev.y == null) return prev;
-        const maxX = Math.max(8, window.innerWidth - panelPixelWidth - 8);
-        const maxY = Math.max(8, window.innerHeight - (isMobile ? 320 : 360));
-        return {
-          x: Math.min(Math.max(8, prev.x), maxX),
-          y: Math.min(Math.max(8, prev.y), maxY),
-        };
-      });
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [isMobile, launcherSize, panelPixelWidth]);
+  }, [launcherSize]);
 
   const startDrag = (e) => {
     dragState.current = {
@@ -4511,36 +4498,6 @@ function FloatingAIAssist({ isMobile=false }) {
       return;
     }
     setOpen(v=>!v);
-  };
-
-  const startPanelDrag = (e) => {
-    if (fullPage) return;
-    panelDragState.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startY: e.clientY,
-      originX: panelX,
-      originY: panelY,
-    };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-
-  const movePanelDrag = (e) => {
-    if (panelDragState.current.pointerId !== e.pointerId) return;
-    const dx = e.clientX - panelDragState.current.startX;
-    const dy = e.clientY - panelDragState.current.startY;
-    const maxX = Math.max(8, window.innerWidth - panelPixelWidth - 8);
-    const maxY = Math.max(8, window.innerHeight - (isMobile ? 320 : 360));
-    setPanelPos({
-      x: Math.min(Math.max(8, panelDragState.current.originX + dx), maxX),
-      y: Math.min(Math.max(8, panelDragState.current.originY + dy), maxY),
-    });
-  };
-
-  const endPanelDrag = (e) => {
-    if (panelDragState.current.pointerId !== e.pointerId) return;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-    panelDragState.current = { pointerId:null, startX:0, startY:0, originX:0, originY:0 };
   };
 
   return (
@@ -4594,13 +4551,7 @@ function FloatingAIAssist({ isMobile=false }) {
             padding:isMobile?"10px":"12px"
           }}
         >
-          <div
-            onPointerDown={startPanelDrag}
-            onPointerMove={movePanelDrag}
-            onPointerUp={endPanelDrag}
-            onPointerCancel={endPanelDrag}
-            style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px", cursor:"grab", touchAction:"none", userSelect:"none" }}
-          >
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0, flex:1 }}>
               <AIBotAvatar size={isMobile ? 38 : 44} active />
               <div style={{ minWidth:0 }}>
@@ -4608,7 +4559,7 @@ function FloatingAIAssist({ isMobile=false }) {
                 <div style={{ fontSize:isMobile?"10px":"11px", color:"var(--t-muted,#6B7280)", lineHeight:1.4 }}>Reusable floating bot for notes, schemes, RTIs, and replies.</div>
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }} onPointerDown={(e)=>e.stopPropagation()}>
+            <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
               <button style={{ ...btn("sec", true), minWidth:isMobile?"84px":"auto" }} onClick={openFullPage}>Open Full</button>
               <button style={{ ...btn("sec", true), minWidth:isMobile?"76px":"auto" }} onClick={()=>setOpen(false)}>Close</button>
             </div>
