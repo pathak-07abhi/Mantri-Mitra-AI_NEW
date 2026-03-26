@@ -4401,7 +4401,7 @@ function AIBotAvatar({ size=56, active=false }) {
   );
 }
 
-function FloatingAIAssist({ isMobile=false }) {
+function FloatingAIAssist({ isMobile=false, dark=false }) {
   const [open, setOpen] = useState(false);
   const [fullPage, setFullPage] = useState(false);
   const [q, setQ] = useState("");
@@ -4441,6 +4441,16 @@ function FloatingAIAssist({ isMobile=false }) {
   const currentY = launcherPos.y ?? (viewport.h - launcherSize - defaultBottom);
   const panelPixelWidth = isMobile ? Math.max(280, viewport.w - 16) : 420;
   const panelWidth = `${panelPixelWidth}px`;
+  const panelBg = dark ? "linear-gradient(180deg, rgba(10,18,34,.98), rgba(15,23,42,.98))" : "linear-gradient(180deg, rgba(255,255,255,.98), rgba(244,249,255,.98))";
+  const panelText = dark ? "#E6EEF8" : "#17324D";
+  const panelMuted = dark ? "rgba(214,225,239,.76)" : "var(--t-muted,#6B7280)";
+  const panelChipBg = dark ? "rgba(77,163,255,.12)" : "rgba(77,163,255,.08)";
+  const panelChipBorder = dark ? "rgba(77,163,255,.26)" : "rgba(77,163,255,.16)";
+  const panelChipText = dark ? "#B9D7FF" : "var(--accent,#1B4F8A)";
+  const panelInputBg = dark ? "rgba(255,255,255,.08)" : "#FFFFFF";
+  const panelInputBorder = dark ? "1px solid rgba(148,163,184,.22)" : "1px solid rgba(148,163,184,.26)";
+  const panelInputText = dark ? "#F8FBFF" : "var(--t-text,#0F172A)";
+  const panelShadow = dark ? "0 22px 52px rgba(2,8,23,.42), 0 8px 24px rgba(0,0,0,.28)" : "0 20px 48px rgba(15,23,42,.18), 0 8px 24px rgba(59,130,246,.12)";
 
   useEffect(() => {
     const handleResize = () => {
@@ -4547,19 +4557,19 @@ function FloatingAIAssist({ isMobile=false }) {
             zIndex:310,
             ...card("rgba(77,163,255,.22)"),
             marginBottom:0,
-            background:"linear-gradient(180deg, rgba(255,255,255,.98), rgba(244,249,255,.98))",
+            background:panelBg,
             overflow:"hidden",
             borderRadius:isMobile?"22px":"20px",
             padding:isMobile?"10px":"14px",
-            boxShadow:isMobile?"0 18px 38px rgba(15,23,42,.18)":"0 20px 48px rgba(15,23,42,.18), 0 8px 24px rgba(59,130,246,.12)"
+            boxShadow:isMobile?"0 18px 38px rgba(15,23,42,.18)":panelShadow
           }}
         >
           <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px", flexWrap:isMobile?"nowrap":"wrap" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0, flex:1 }}>
               <AIBotAvatar size={isMobile ? 38 : 44} active />
               <div style={{ minWidth:0 }}>
-                <div style={{ ...secTitle, marginBottom:"2px", fontSize:isMobile?"12px":"13px" }}>AI Quick Assist</div>
-                <div style={{ fontSize:isMobile?"10px":"11px", color:"var(--t-muted,#6B7280)", lineHeight:1.4 }}>Reusable floating bot for notes, schemes, RTIs, and replies.</div>
+                <div style={{ ...secTitle, marginBottom:"2px", fontSize:isMobile?"12px":"13px", color:panelText }}>AI Quick Assist</div>
+                <div style={{ fontSize:isMobile?"10px":"11px", color:panelMuted, lineHeight:1.4 }}>Reusable floating bot for notes, schemes, RTIs, and replies.</div>
               </div>
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:"8px", flexShrink:0 }}>
@@ -4567,18 +4577,18 @@ function FloatingAIAssist({ isMobile=false }) {
               <button style={{ ...btn("sec", true), minWidth:isMobile?"76px":"auto" }} onClick={()=>setOpen(false)}>Close</button>
             </div>
           </div>
-          <div style={{ fontSize:isMobile?"11px":"12px", color:"var(--t-muted,#6B7280)", marginBottom:"10px", lineHeight:1.5 }}>
+          <div style={{ fontSize:isMobile?"11px":"12px", color:panelMuted, marginBottom:"10px", lineHeight:1.5 }}>
             Ask about schemes, governance, speeches, RTIs, citizen issues, or meeting prep.
           </div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginBottom:"10px" }}>
             {prompts.map((prompt)=>(
-              <button key={prompt} onClick={()=>setQ(prompt)} style={{ background:"rgba(77,163,255,.08)", border:"1px solid rgba(77,163,255,.16)", color:"var(--accent,#1B4F8A)", borderRadius:"999px", padding:isMobile?"8px 10px":"6px 10px", fontSize:isMobile?"10px":"11px", cursor:"pointer", textAlign:"left", maxWidth:isMobile?"100%":"none", lineHeight:1.35 }}>
+              <button key={prompt} onClick={()=>setQ(prompt)} style={{ background:panelChipBg, border:`1px solid ${panelChipBorder}`, color:panelChipText, borderRadius:"999px", padding:isMobile?"8px 10px":"6px 10px", fontSize:isMobile?"10px":"11px", cursor:"pointer", textAlign:"left", maxWidth:isMobile?"100%":"none", lineHeight:1.35 }}>
                 {prompt}
               </button>
             ))}
           </div>
           <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr auto", gap:"8px", marginBottom:"10px", alignItems:"stretch" }}>
-            <input style={{ ...inp, minWidth:0, width:"100%" }} placeholder="Type your question…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} />
+            <input style={{ ...inp, minWidth:0, width:"100%", background:panelInputBg, border:panelInputBorder, color:panelInputText, boxShadow:"none" }} placeholder="Type your question…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} />
             <button style={{ ...btn(), width:isMobile?"100%":"auto", minWidth:isMobile?"100%":"88px" }} onClick={ask} disabled={loading}>{loading ? "…" : "Ask"}</button>
           </div>
           {loading && <Spinner text="Thinking…" />}
@@ -5302,7 +5312,7 @@ export default function App() {
 
       {/* ══ NOTIFICATION CENTER ══ */}
       {showNotifs && <NotificationCenter notifications={notifications} setNotifications={setNotifications} onClose={()=>setShowNotifs(false)}/>}
-      <FloatingAIAssist isMobile={isMobile} />
+      <FloatingAIAssist isMobile={isMobile} dark={dark} />
 
       {/* ══ FOOTER — desktop only ══ */}
       {!isMobile && <div className="app-shell" style={{ background:"rgba(8,16,29,.48)", padding:"6px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, borderTop:"1px solid rgba(255,154,60,.32)", backdropFilter:"blur(18px)", WebkitBackdropFilter:"blur(18px)" }}>
