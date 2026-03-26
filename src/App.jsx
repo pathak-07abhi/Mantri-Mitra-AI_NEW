@@ -4495,7 +4495,8 @@ function FloatingAIAssist({ isMobile=false }) {
       dragState.current = { ...dragState.current, moved:false, suppressClick:false };
       return;
     }
-    setOpen(v=>!v);
+    setOpen(false);
+    setFullPage(true);
   };
 
   return (
