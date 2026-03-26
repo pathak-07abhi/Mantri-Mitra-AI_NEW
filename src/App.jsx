@@ -4536,10 +4536,12 @@ function FloatingAIAssist({ isMobile=false }) {
         <div
           style={{
             position:"fixed",
-            left:"50%",
-            top:isMobile?"50%":"46%",
-            transform:"translate(-50%, -50%)",
-            width:panelWidth,
+            left:isMobile ? "8px" : "auto",
+            right:isMobile ? "8px" : "20px",
+            top:isMobile ? "88px" : "104px",
+            bottom:"auto",
+            transform:"none",
+            width:isMobile ? "auto" : panelWidth,
             maxHeight:isMobile?"min(62vh, 520px)":"70vh",
             zIndex:259,
             ...card("rgba(77,163,255,.22)"),
