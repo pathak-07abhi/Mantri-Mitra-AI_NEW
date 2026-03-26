@@ -4537,11 +4537,11 @@ function FloatingAIAssist({ isMobile=false }) {
         <div
           style={{
             position:"fixed",
-            left:isMobile ? "8px" : "auto",
-            right:isMobile ? "8px" : "20px",
-            top:isMobile ? "auto" : "auto",
+            left:isMobile ? "8px" : "50%",
+            right:isMobile ? "8px" : "auto",
+            top:isMobile ? "auto" : "50%",
             bottom:isMobile ? "86px" : "94px",
-            transform:"none",
+            transform:isMobile ? "none" : "translate(-50%, -50%)",
             width:isMobile ? "auto" : panelWidth,
             maxHeight:isMobile?"min(62vh, 520px)":"70vh",
             zIndex:259,
@@ -5201,11 +5201,16 @@ export default function App() {
         {/* ── Branding bar ── */}
         <div className="brand-lockup" style={{ padding:isMobile?"10px 12px 8px":"14px 18px 12px", display:"flex", alignItems:"center", gap:isMobile?"10px":"12px", flexWrap:"nowrap" }}>
           <div style={{ width:isMobile?"34px":"50px", height:isMobile?"34px":"50px", background:"linear-gradient(135deg, #FFFFFF, #EEF5FF)", borderRadius:isMobile?"14px":"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"16px":"22px", flexShrink:0, border:"1px solid rgba(220,232,246,.42)", boxShadow:"0 10px 22px rgba(4,21,43,.18), inset 0 1px 0 rgba(255,255,255,.96)" }}>🇮🇳</div>
-          <div style={{ minWidth:0, flex:1 }}>
+          <button
+            onClick={()=>setPage("dashboard")}
+            style={{ minWidth:0, flex:1, background:"transparent", border:"none", padding:0, margin:0, textAlign:"left", cursor:"pointer" }}
+            aria-label="Go to dashboard"
+            title="Go to dashboard"
+          >
             <div style={{ fontSize:isMobile?"12px":"20px", fontWeight:"800", color:"#F8FBFF", lineHeight:1.15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textShadow:"0 4px 18px rgba(0,0,0,.24)" }}>Mantri Mitra AI</div>
             {!isMobile && <div style={{ fontSize:"11px", color:"rgba(232,241,250,.82)", marginTop:"3px", letterSpacing:".3px" }}>AI-Powered Constituency Management System</div>}
             <div style={{ fontSize:isMobile?"9px":"12px", color:"#FF9500", fontWeight:"700", marginTop:"1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{settings.constituency} · {settings.name} ({settings.role})</div>
-          </div>
+          </button>
           <div style={{ display:"flex", alignItems:"center", gap:isMobile?"6px":"8px", marginLeft:"auto", width:"auto", justifyContent:"flex-end", flexWrap:"nowrap", flexShrink:0 }}>
             <button onClick={()=>setShowNotifs(true)} style={{ position:"relative", display:"flex", alignItems:"center", justifyContent:"center", width:isMobile?"44px":"40px", minWidth:isMobile?"44px":"40px", height:isMobile?"44px":"40px", minHeight:isMobile?"44px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:"0", cursor:"pointer", color:"var(--chrome-text)", flexShrink:0, boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
               <span style={{ fontSize:"14px" }}>🔔</span>
