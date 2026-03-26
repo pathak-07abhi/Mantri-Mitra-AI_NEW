@@ -4440,8 +4440,6 @@ function FloatingAIAssist({ isMobile=false }) {
   const currentX = launcherPos.x ?? (viewport.w - launcherSize - defaultRight);
   const currentY = launcherPos.y ?? (viewport.h - launcherSize - defaultBottom);
   const panelPixelWidth = isMobile ? Math.max(280, viewport.w - 16) : 360;
-  const panelX = isMobile ? 8 : Math.max(12, currentX - panelPixelWidth + launcherSize);
-  const panelY = isMobile ? Math.max(96, currentY - 360) : Math.max(88, currentY - 260);
   const panelWidth = `${panelPixelWidth}px`;
 
   useEffect(() => {
@@ -4538,8 +4536,9 @@ function FloatingAIAssist({ isMobile=false }) {
         <div
           style={{
             position:"fixed",
-            left:panelX+"px",
-            top:panelY+"px",
+            left:"50%",
+            top:isMobile?"50%":"46%",
+            transform:"translate(-50%, -50%)",
             width:panelWidth,
             maxHeight:isMobile?"min(62vh, 520px)":"70vh",
             zIndex:259,
