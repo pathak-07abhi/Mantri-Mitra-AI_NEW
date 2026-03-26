@@ -659,6 +659,72 @@ function getFileIcon(name) {
   return "◫";
 }
 
+async function loadPdfjs() {
+  const candidates = [
+    "pdfjs-dist/legacy/build/pdf.mjs",
+    "pdfjs-dist/build/pdf.mjs",
+    "pdfjs-dist/legacy/build/pdf",
+    "pdfjs-dist/build/pdf",
+    "pdfjs-dist",
+  ];
+  let lastErr = null;
+  for (const mod of candidates) {
+    try {
+      return await import(mod);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("Unable to load pdfjs");
+}
+
+function pdfItemsToText(items) {
+  let out = "";
+  for (const item of items || []) {
+    const str = typeof item?.str === "string" ? item.str : "";
+    if (!str) {
+      if (item?.hasEOL) out += "\n";
+      continue;
+    }
+    const prev = out[out.length - 1] || "";
+    const needsSpace = out && !/\s/.test(prev) && !/^[,.;:!?%)]/.test(str);
+    out += (needsSpace ? " " : "") + str;
+    if (item?.hasEOL) out += "\n";
+  }
+  return out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+async function extractPdfTextFromBytes(bytes, maxPages = 25) {
+  const pdfjsLib = await loadPdfjs();
+  if (pdfjsLib?.GlobalWorkerOptions) pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+  const loadingTask = pdfjsLib.getDocument({
+    data: bytes,
+    disableWorker: true,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: true,
+    disableFontFace: true,
+    standardFontDataUrl: undefined,
+  });
+  const pdf = await loadingTask.promise;
+  let pdfText = "";
+  const pageLimit = Math.min(pdf.numPages || 0, maxPages);
+  for (let p = 1; p <= pageLimit; p++) {
+    try {
+      const page = await pdf.getPage(p);
+      const textContent = await page.getTextContent({
+        normalizeWhitespace: true,
+        disableCombineTextItems: false,
+      });
+      const pageText = pdfItemsToText(textContent.items);
+      if (pageText) pdfText += pageText + "\n\n";
+    } catch {
+      continue;
+    }
+  }
+  return pdfText.trim();
+}
+
 // Read any file → returns { text, base64, mediaType, method }
 async function extractFileContent(file) {
   const ext = name => name.split(".").pop().toLowerCase();
@@ -713,6 +779,7 @@ async function extractFileContent(file) {
     const arrayBuffer = await file.arrayBuffer();
     let pdfText = "";
     let base64 = "";
+    let extractError = "";
     // Convert to base64
     try {
       const bytes = new Uint8Array(arrayBuffer);
@@ -725,27 +792,13 @@ async function extractFileContent(file) {
     } catch(b64Err) { base64 = ""; }
     // Extract text via pdfjs
     try {
-      const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "";
-      const pdf = await pdfjsLib.getDocument({
-        data: new Uint8Array(arrayBuffer),
-        useWorkerFetch: false,
-        isEvalSupported: false,
-        useSystemFonts: true,
-        disableFontFace: true,
-      }).promise;
-      const maxPg = Math.min(pdf.numPages, 25);
-      for (let p = 1; p <= maxPg; p++) {
-        try {
-          const page = await pdf.getPage(p);
-          const tc = await page.getTextContent();
-          const pageText = tc.items.map(item => item.str).join(" ");
-          if (pageText.trim()) pdfText += pageText + "\n";
-        } catch { continue; }
-      }
+      pdfText = await extractPdfTextFromBytes(new Uint8Array(arrayBuffer), 25);
       pdfText = pdfText.trim().slice(0, 15000);
-    } catch(pdfErr) { pdfText = ""; }
-    return { text: pdfText || null, base64, mediaType:"application/pdf", method:"pdf", size };
+    } catch(pdfErr) {
+      pdfText = "";
+      extractError = pdfErr?.message || "Unknown PDF extraction error";
+    }
+    return { text: pdfText || null, base64, mediaType:"application/pdf", method:"pdf", size, extractError };
   }
 
   // ── Images → base64 → Claude vision ──
@@ -784,21 +837,13 @@ async function summarizeFile(fileData, fileName) {
 
       // ── Step 2: Get PDF text (pre-extracted or re-extract now) ──
       let pdfText = fileData.text || "";
-      let extractError = "";
+      let extractError = fileData.extractError || "";
       if (!pdfText || pdfText.length < 30) {
         try {
-          const pdfjsLib = await import("pdfjs-dist");
-          pdfjsLib.GlobalWorkerOptions.workerSrc = "";
           const binary = atob(fileData.base64 || "");
           const bytes = new Uint8Array(binary.length);
           for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          const pdf = await pdfjsLib.getDocument({ data: bytes, useWorkerFetch:false, isEvalSupported:false, useSystemFonts:true }).promise;
-          const maxPages = Math.min(pdf.numPages, 20);
-          for (let p = 1; p <= maxPages; p++) {
-            const page = await pdf.getPage(p);
-            const tc = await page.getTextContent();
-            pdfText += tc.items.map(i => i.str).join(" ") + "\n";
-          }
+          pdfText = await extractPdfTextFromBytes(bytes, 20);
           pdfText = pdfText.trim().slice(0, 14000);
         } catch(e2) {
           extractError = e2.message;
@@ -3742,20 +3787,20 @@ function getTheme(dark) {
     scrollTrack:"rgba(8, 17, 31, 0.88)",
     selectBg: "#0C1627",
   } : {
-    bg:       "#F7FBFF",
-    shellBg:  "radial-gradient(circle at top, #ffffff 0%, #f6fbff 34%, #e7f1fb 100%)",
-    card:     "rgba(255, 255, 255, 0.82)",
-    border:   "rgba(119, 145, 184, 0.16)",
+    bg:       "#EEF4FB",
+    shellBg:  "linear-gradient(180deg, #F8FBFF 0%, #EDF4FB 48%, #E4EEF8 100%)",
+    card:     "rgba(255, 255, 255, 0.96)",
+    border:   "rgba(106, 133, 170, 0.24)",
     text:     "#0F172A",
-    muted:    "#42566F",
-    inp:      "rgba(255,255,255,.92)",
-    inpBorder:"rgba(119, 145, 184, 0.18)",
-    subBar:   "rgba(255,255,255,.84)",
-    subBarBorder:"rgba(119, 145, 184, 0.14)",
-    rowHover: "rgba(27,79,138,.04)",
-    scrollThumb:"rgba(119, 145, 184, 0.28)",
-    scrollTrack:"rgba(236, 242, 250, 0.78)",
-    selectBg: "#F8FBFF",
+    muted:    "#52657F",
+    inp:      "#FFFFFF",
+    inpBorder:"rgba(106, 133, 170, 0.24)",
+    subBar:   "rgba(255,255,255,.94)",
+    subBarBorder:"rgba(106, 133, 170, 0.18)",
+    rowHover: "rgba(27,79,138,.055)",
+    scrollThumb:"rgba(106, 133, 170, 0.34)",
+    scrollTrack:"rgba(231, 239, 248, 0.92)",
+    selectBg: "#FFFFFF",
   };
 }
 
@@ -4398,13 +4443,15 @@ function FloatingAIAssist({ isMobile=false }) {
         style={{
           position:"fixed",
           right:isMobile?"14px":"20px",
-          bottom:isMobile?"88px":"22px",
+          bottom:isMobile?"94px":"22px",
           zIndex:260,
           display:"flex",
           alignItems:"center",
-          gap:"10px",
-          padding:isMobile?"10px 12px":"12px 14px 12px 12px",
-          borderRadius:"999px",
+          justifyContent:"center",
+          width:isMobile?"60px":"64px",
+          height:isMobile?"60px":"64px",
+          padding:"0",
+          borderRadius:"50%",
           border:"1px solid rgba(77,163,255,.28)",
           background:"linear-gradient(135deg, rgba(10,27,56,.96), rgba(27,79,138,.95))",
           color:"#fff",
@@ -4414,11 +4461,7 @@ function FloatingAIAssist({ isMobile=false }) {
           cursor:"pointer"
         }}
       >
-        <AIBotAvatar size={isMobile ? 38 : 42} active={open} />
-        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-start", lineHeight:1.05 }}>
-          <span style={{ fontSize:"10px", letterSpacing:".8px", color:"rgba(255,255,255,.62)", textTransform:"uppercase" }}>AI Bot</span>
-          <span>{open ? "Close Assistant" : "Ask Mantri Mitra"}</span>
-        </div>
+        <AIBotAvatar size={isMobile ? 40 : 44} active={open} />
       </button>
 
       {open && (
@@ -4426,7 +4469,7 @@ function FloatingAIAssist({ isMobile=false }) {
           style={{
             position:"fixed",
             right:isMobile?"12px":"20px",
-            bottom:isMobile?"148px":"86px",
+            bottom:isMobile?"164px":"90px",
             width:isMobile?"calc(100vw - 24px)":"360px",
             maxHeight:isMobile?"58vh":"70vh",
             zIndex:259,
@@ -4912,12 +4955,12 @@ export default function App() {
           --t-text:${T.text};--t-muted:${T.muted};
           --t-inp:${T.inp};--t-inp-border:${T.inpBorder};
           --accent:${uiAccent};
-          --chrome-bg:${dark ? "rgba(5,10,20,.34)" : "rgba(255,255,255,.96)"};
-          --chrome-strong:${dark ? "rgba(15,52,96,.86)" : "linear-gradient(90deg, rgba(244,248,255,.98), rgba(229,238,252,.96))"};
-          --chrome-border:${dark ? "rgba(255,255,255,.14)" : "rgba(125,148,183,.24)"};
-          --chrome-text:${dark ? "rgba(255,255,255,.94)" : "#18324D"};
-          --chrome-muted:${dark ? "rgba(255,255,255,.72)" : "#5D748C"};
-          --chrome-soft:${dark ? "rgba(255,255,255,.10)" : "rgba(244,248,255,.90)"};
+          --chrome-bg:${dark ? "rgba(5,10,20,.34)" : "linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,247,255,.96))"};
+          --chrome-strong:${dark ? "rgba(15,52,96,.86)" : "linear-gradient(90deg, rgba(223,235,250,.96), rgba(235,243,252,.98))"};
+          --chrome-border:${dark ? "rgba(255,255,255,.14)" : "rgba(112,138,172,.26)"};
+          --chrome-text:${dark ? "rgba(255,255,255,.94)" : "#15314F"};
+          --chrome-muted:${dark ? "rgba(255,255,255,.72)" : "#5F748C"};
+          --chrome-soft:${dark ? "rgba(255,255,255,.10)" : "rgba(255,255,255,.88)"};
           --font-base:${fontBase};
           --spacing:${spacingScale};
         }
@@ -4945,7 +4988,7 @@ export default function App() {
         .tag-pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;white-space:nowrap;background:var(--t-bg);color:var(--accent);border:1px solid var(--t-border)}
         .trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
         .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
-        .stat-card{background:var(--t-card);border:1px solid var(--t-border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;box-shadow:0 16px 32px rgba(15,23,42,.10);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%)}
+        .stat-card{background:var(--t-card);border:1px solid var(--t-border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;box-shadow:${dark ? "0 16px 32px rgba(15,23,42,.10)" : "0 14px 30px rgba(92,122,160,.14), 0 2px 10px rgba(148,163,184,.10)"};backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%)}
         .stat-num{font-size:24px;font-weight:800}
         .stat-lbl{font-size:11px;font-weight:700;color:var(--t-muted);text-transform:uppercase;letter-spacing:.5px}
         .sec-title{font-size:13px;font-weight:800;color:var(--accent);text-transform:uppercase;letter-spacing:1px;padding-left:8px;border-left:3px solid #FF6600;margin-bottom:10px}
@@ -5005,23 +5048,23 @@ export default function App() {
         .app-ambient-grid{position:absolute;inset:-10%;background:
           linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
           linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
-          background-size:80px 80px;mask-image:radial-gradient(circle at center, rgba(0,0,0,.72), transparent 85%);opacity:${dark ? ".11" : ".18"};animation:driftGlow 18s ease-in-out infinite}
-        .app-ambient-orb{position:absolute;border-radius:999px;filter:blur(70px);opacity:.85;animation:floatOrb 15s ease-in-out infinite}
+          background-size:80px 80px;mask-image:radial-gradient(circle at center, rgba(0,0,0,.72), transparent 85%);opacity:${dark ? ".11" : ".10"};animation:driftGlow 18s ease-in-out infinite}
+        .app-ambient-orb{position:absolute;border-radius:999px;filter:blur(${dark ? "70px" : "85px"});opacity:${dark ? ".85" : ".48"};animation:floatOrb 15s ease-in-out infinite}
         .app-shell{position:relative;z-index:1}
-        .premium-panel{background:linear-gradient(180deg, var(--chrome-soft), rgba(255,255,255,.08));border:1px solid var(--chrome-border);box-shadow:${dark ? "0 18px 40px rgba(2,8,23,.12)" : "0 14px 30px rgba(125,148,183,.16)"} , inset 0 1px 0 rgba(255,255,255,.10);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%)}
+        .premium-panel{background:${dark ? "linear-gradient(180deg, var(--chrome-soft), rgba(255,255,255,.08))" : "linear-gradient(180deg, rgba(255,255,255,.98), rgba(245,249,255,.94))"};border:1px solid var(--chrome-border);box-shadow:${dark ? "0 18px 40px rgba(2,8,23,.12)" : "0 18px 40px rgba(110,136,173,.14), 0 3px 12px rgba(148,163,184,.08)"} , inset 0 1px 0 rgba(255,255,255,.28);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%)}
         .premium-bar{border-radius:0 0 22px 22px;overflow:hidden}
-        .premium-subbar{border-radius:18px;margin:8px 14px 0;padding:6px 14px;box-shadow:0 10px 26px rgba(2,8,23,.10), inset 0 1px 0 rgba(255,255,255,.10)}
+        .premium-subbar{border-radius:18px;margin:8px 14px 0;padding:6px 14px;box-shadow:${dark ? "0 10px 26px rgba(2,8,23,.10), inset 0 1px 0 rgba(255,255,255,.10)" : "0 12px 24px rgba(121,145,180,.12), inset 0 1px 0 rgba(255,255,255,.48)"}}
         .brand-lockup{position:relative}
         .brand-lockup::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg, rgba(255,154,60,.0), rgba(255,154,60,.55), rgba(255,255,255,.32), rgba(52,211,153,.55), rgba(52,211,153,0))}
         .desktop-nav-shell{margin:10px 14px 12px;padding:8px;display:flex;gap:8px;overflow-x:auto;border-radius:20px}
         .desktop-nav-btn{padding:10px 14px;cursor:pointer;font-family:'Noto Sans', Arial, sans-serif;color:var(--chrome-muted);background:transparent;border:1px solid transparent;border-radius:14px;display:flex;align-items:center;gap:8px;flex-shrink:0;transition:all .18s;white-space:nowrap;position:relative}
-        .desktop-nav-btn:hover{background:${dark ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.72)"};color:var(--chrome-text);border-color:var(--chrome-border);transform:translateY(-1px)}
-        .desktop-nav-btn.active{color:var(--chrome-text);background:linear-gradient(180deg, rgba(77,163,255,.22), rgba(77,163,255,.10));border-color:rgba(77,163,255,.34);box-shadow:${dark ? "0 12px 26px rgba(77,163,255,.14)" : "0 10px 22px rgba(77,163,255,.16)"} , inset 0 1px 0 rgba(255,255,255,.12)}
+        .desktop-nav-btn:hover{background:${dark ? "rgba(255,255,255,.16)" : "rgba(232,240,250,.92)"};color:var(--chrome-text);border-color:var(--chrome-border);transform:translateY(-1px)}
+        .desktop-nav-btn.active{color:var(--chrome-text);background:linear-gradient(180deg, rgba(77,163,255,.24), rgba(77,163,255,.10));border-color:rgba(77,163,255,.34);box-shadow:${dark ? "0 12px 26px rgba(77,163,255,.14)" : "0 12px 22px rgba(77,163,255,.14), inset 0 1px 0 rgba(255,255,255,.36)"}}
         .desktop-nav-btn.active::after{content:"";position:absolute;left:14px;right:14px;bottom:6px;height:2px;border-radius:999px;background:linear-gradient(90deg, #FF9A3C, rgba(255,255,255,.95), #34D399)}
         .mobile-nav-btn{position:relative;overflow:hidden}
         .mobile-nav-btn.active{background:linear-gradient(180deg, rgba(77,163,255,.16), rgba(77,163,255,.06));color:var(--chrome-text);border-top:2px solid rgba(77,163,255,.9)}
         .mobile-nav-btn.active::before{content:"";position:absolute;left:18%;right:18%;top:0;height:2px;border-radius:999px;background:linear-gradient(90deg, #FF9A3C, #4DA3FF, #34D399)}
-        .page-heading-shell{border-radius:18px;padding:12px 14px;margin-bottom:2px;box-shadow:0 12px 28px rgba(2,8,23,.10), inset 0 1px 0 rgba(255,255,255,.08)}
+        .page-heading-shell{border-radius:18px;padding:12px 14px;margin-bottom:2px;box-shadow:${dark ? "0 12px 28px rgba(2,8,23,.10), inset 0 1px 0 rgba(255,255,255,.08)" : "0 14px 28px rgba(110,136,173,.12), inset 0 1px 0 rgba(255,255,255,.50)"}}
         `}</style>
       <div className="app-ambient">
         <div className="app-ambient-grid" />
@@ -5033,15 +5076,31 @@ export default function App() {
       {/* ══ GOV HEADER ══ */}
       <div className="app-shell premium-panel premium-bar" style={{ background:"var(--chrome-bg)", flexShrink:0 }}>
         {/* ── Branding bar ── */}
-        <div className="brand-lockup" style={{ padding:isMobile?"12px 12px 10px":"14px 18px 12px", display:"flex", alignItems:"center", gap:"12px" }}>
-          <div style={{ width:isMobile?"38px":"50px", height:isMobile?"38px":"50px", background:"linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.08))", borderRadius:"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"17px":"22px", flexShrink:0, border:"1px solid rgba(255,255,255,.20)", boxShadow:"0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.14)" }}>🇮🇳</div>
+        <div className="brand-lockup" style={{ padding:isMobile?"12px 12px 10px":"14px 18px 12px", display:"flex", alignItems:"center", gap:"12px", flexWrap:isMobile?"wrap":"nowrap" }}>
+          <div style={{ width:isMobile?"38px":"50px", height:isMobile?"38px":"50px", background:dark?"linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.08))":"linear-gradient(135deg, #FFFFFF, #EEF5FF)", borderRadius:"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"17px":"22px", flexShrink:0, border:dark?"1px solid rgba(255,255,255,.20)":"1px solid rgba(123,148,181,.18)", boxShadow:dark?"0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.14)":"0 10px 22px rgba(118,144,179,.16), inset 0 1px 0 rgba(255,255,255,.88)" }}>🇮🇳</div>
           <div style={{ minWidth:0, flex:1 }}>
             <div style={{ fontSize:isMobile?"14px":"20px", fontWeight:"800", color:dark?"#fff":"#17324D", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textShadow:dark?"0 4px 18px rgba(0,0,0,.24)":"none" }}>मंत्री मित्र — Mantri Mitra AI</div>
             {!isMobile && <div style={{ fontSize:"11px", color:dark?"rgba(255,255,255,.82)":"#53708A", marginTop:"3px", letterSpacing:".3px" }}>AI-Powered Constituency Management System</div>}
             <div style={{ fontSize:isMobile?"10px":"12px", color:"#FF9500", fontWeight:"700", marginTop:"1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{settings.constituency} · {settings.name} ({settings.role})</div>
           </div>
+          <div style={{ display:"flex", alignItems:"center", gap:"8px", marginLeft:isMobile?0:"auto", width:isMobile?"100%":"auto", justifyContent:isMobile?"flex-end":"flex-start", flexWrap:"wrap" }}>
+            <button onClick={()=>setShowNotifs(true)} style={{ position:"relative", display:"flex", alignItems:"center", justifyContent:"center", minWidth:isMobile?"50px":"42px", minHeight:isMobile?"50px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:isMobile?"8px 12px":"6px 11px", cursor:"pointer", color:"var(--chrome-text)", gap:"4px", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
+              <span style={{ fontSize:"14px" }}>🔔</span>
+              {unreadCount>0 && <span style={{ position:"absolute", top:"-4px", right:"-4px", background:"#EF4444", color:"#fff", fontSize:"9px", fontWeight:"800", padding:"1px 4px", borderRadius:"10px", minWidth:"16px", textAlign:"center" }}>{unreadCount>9?"9+":unreadCount}</span>}
+            </button>
+
+            <button onClick={()=>setDark(d=>!d)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"4px", cursor:"pointer", minWidth:isMobile?"50px":"42px", minHeight:isMobile?"50px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:isMobile?"8px 12px":"6px 11px", fontSize:"11px", color:"var(--chrome-text)", fontWeight:"600", flexShrink:0, boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
+              <span>{dark?"☀️":"🌙"}</span>{!isMobile&&<span>{dark?"Light":"Dark"}</span>}
+            </button>
+
+            <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0, padding:isMobile?"0":"0 0 0 2px" }}>
+              <div style={{ width:"28px", height:"28px", borderRadius:"50%", background:"linear-gradient(135deg,#FF6600,#FF9500)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"800", color:"#fff", flexShrink:0 }}>{(authUser.name||"?")[0].toUpperCase()}</div>
+              {!isMobile && <span style={{ fontSize:"11px", color:"var(--chrome-text)", maxWidth:"120px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{authUser.name}</span>}
+              <button onClick={()=>{setAuthUser(null);setPage("dashboard");}} style={{ cursor:"pointer", background:dark?"rgba(192,57,43,.24)":"linear-gradient(180deg, #FFE7E8, #FFD9DD)", border:dark?"1px solid rgba(252,165,165,.24)":"1px solid rgba(239,68,68,.20)", borderRadius:"14px", padding:isMobile?"8px 12px":"5px 10px", minHeight:isMobile?"50px":"auto", fontSize:"11px", color:dark?"#FECACA":"#B42318", fontWeight:"700", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.05)":"0 6px 14px rgba(239,68,68,.10), inset 0 1px 0 rgba(255,255,255,.54)" }}>Out</button>
+            </div>
+          </div>
           {!isMobile && (
-            <div style={{ display:"flex", flexDirection:"column", gap:"4px", flexShrink:0, alignItems:"flex-end", padding:"8px 10px", borderRadius:"16px", background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.10)", boxShadow:"inset 0 1px 0 rgba(255,255,255,.08)" }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:"4px", flexShrink:0, alignItems:"flex-end", padding:"8px 10px", borderRadius:"16px", background:dark?"rgba(255,255,255,.06)":"linear-gradient(180deg, rgba(255,255,255,.86), rgba(239,246,255,.82))", border:dark?"1px solid rgba(255,255,255,.10)":"1px solid rgba(123,148,181,.18)", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 8px 18px rgba(130,154,188,.12), inset 0 1px 0 rgba(255,255,255,.84)" }}>
               <div style={{ width:"74px", height:"4px", background:"#FF6600", borderRadius:"999px" }}/>
               <div style={{ width:"74px", height:"4px", background:"#fff", borderRadius:"999px" }}/>
               <div style={{ width:"74px", height:"4px", background:"#138808", borderRadius:"999px" }}/>
@@ -5052,26 +5111,11 @@ export default function App() {
 
         {/* ── Top utility bar ── */}
         <div style={{ background:"var(--chrome-strong)", padding:"8px 14px", display:"flex", alignItems:"center", gap:"10px", borderTop:"1px solid var(--chrome-border)", borderBottom:"1px solid var(--chrome-border)" }}>
-          {!isMobile && <span style={{ fontSize:"11px", color:"var(--chrome-muted)" }}>{getGovLabel(settings)} · MPA</span>}
+          <span style={{ fontSize:isMobile?"10px":"11px", color:"var(--chrome-muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{getGovLabel(settings)} · MPA</span>
           <div style={{ flex:1 }}/>
           {!isMobile && <span style={{ fontSize:"11px", color:"var(--chrome-muted)", fontFamily:"monospace" }}>
             🗓 {liveNow.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})} &nbsp; 🕐 {liveNow.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true})} IST
           </span>}
-
-          <button onClick={()=>setShowNotifs(true)} style={{ position:"relative", display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(255,255,255,.16)", border:"1px solid var(--chrome-border)", borderRadius:"12px", padding:"6px 11px", cursor:"pointer", color:"var(--chrome-text)", gap:"4px", boxShadow:"inset 0 1px 0 rgba(255,255,255,.08)" }}>
-            <span style={{ fontSize:"14px" }}>🔔</span>
-            {unreadCount>0 && <span style={{ position:"absolute", top:"-4px", right:"-4px", background:"#EF4444", color:"#fff", fontSize:"9px", fontWeight:"800", padding:"1px 4px", borderRadius:"10px", minWidth:"16px", textAlign:"center" }}>{unreadCount>9?"9+":unreadCount}</span>}
-          </button>
-
-          <button onClick={()=>setDark(d=>!d)} style={{ display:"flex", alignItems:"center", gap:"4px", cursor:"pointer", background:"rgba(255,255,255,.16)", border:"1px solid var(--chrome-border)", borderRadius:"12px", padding:"6px 11px", fontSize:"11px", color:"var(--chrome-text)", fontWeight:"600", flexShrink:0, boxShadow:"inset 0 1px 0 rgba(255,255,255,.08)" }}>
-            <span>{dark?"☀️":"🌙"}</span>{!isMobile&&<span>{dark?"Light":"Dark"}</span>}
-          </button>
-
-          <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
-            <div style={{ width:"28px", height:"28px", borderRadius:"50%", background:"linear-gradient(135deg,#FF6600,#FF9500)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"800", color:"#fff", flexShrink:0 }}>{(authUser.name||"?")[0].toUpperCase()}</div>
-            {!isMobile && <span style={{ fontSize:"11px", color:"var(--chrome-text)", maxWidth:"120px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{authUser.name}</span>}
-            <button onClick={()=>{setAuthUser(null);setPage("dashboard");}} style={{ cursor:"pointer", background:"rgba(192,57,43,.24)", border:"1px solid rgba(252,165,165,.24)", borderRadius:"12px", padding:"5px 10px", fontSize:"11px", color:"#FECACA", fontWeight:"700", boxShadow:"inset 0 1px 0 rgba(255,255,255,.05)" }}>Out</button>
-          </div>
         </div>
 
         {/* ── DESKTOP Navigation bar ── */}
