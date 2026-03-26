@@ -4044,14 +4044,6 @@ function AuthPage({ onLogin }) {
             <div style={{ width:"8px", height:"8px", borderRadius:"50%", background:"#4ADE80", boxShadow:"0 0 8px #4ADE80" }}/>
           </div>
 
-          <div style={{ display:"flex", alignItems:"center", gap:"14px", marginBottom:"16px", padding:isMobile?"14px":"16px 18px", borderRadius:"20px", background:"linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.05))", border:"1px solid rgba(255,255,255,.12)", boxShadow:"0 20px 50px rgba(0,0,0,.18)" }}>
-            <AIBotAvatar size={isMobile ? 52 : 60} active />
-            <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:"11px", letterSpacing:"1px", textTransform:"uppercase", color:"rgba(255,255,255,.62)", marginBottom:"4px" }}>Official AI Companion</div>
-              <div style={{ fontSize:isMobile?"15px":"16px", lineHeight:1.35, color:"#fff", fontWeight:"700" }}>Register once, then use the floating Mantri Mitra bot anywhere in the app.</div>
-            </div>
-          </div>
-
           <div style={{ background:"rgba(255,255,255,.08)", border:"1px solid rgba(255,255,255,.16)", borderRadius:"24px", overflow:"hidden", backdropFilter:"blur(24px) saturate(150%)", WebkitBackdropFilter:"blur(24px) saturate(150%)", boxShadow:"0 28px 80px rgba(0,0,0,.42)" }}>
             {/* Tab switcher */}
             <div style={{ display:"flex", borderBottom:"1px solid rgba(255,255,255,.1)" }}>
@@ -4436,6 +4428,10 @@ function FloatingAIAssist({ isMobile=false }) {
     setLoading(false);
   };
 
+  const launcherSize = isMobile ? 56 : 64;
+  const panelWidth = isMobile ? "calc(100vw - 16px)" : "360px";
+  const panelBottom = isMobile ? "154px" : "90px";
+
   return (
     <>
       <button
@@ -4448,8 +4444,8 @@ function FloatingAIAssist({ isMobile=false }) {
           display:"flex",
           alignItems:"center",
           justifyContent:"center",
-          width:isMobile?"60px":"64px",
-          height:isMobile?"60px":"64px",
+          width:launcherSize+"px",
+          height:launcherSize+"px",
           padding:"0",
           borderRadius:"50%",
           border:"1px solid rgba(77,163,255,.28)",
@@ -4468,40 +4464,43 @@ function FloatingAIAssist({ isMobile=false }) {
         <div
           style={{
             position:"fixed",
-            right:isMobile?"12px":"20px",
-            bottom:isMobile?"164px":"90px",
-            width:isMobile?"calc(100vw - 24px)":"360px",
-            maxHeight:isMobile?"58vh":"70vh",
+            right:isMobile?"8px":"20px",
+            left:isMobile?"8px":"auto",
+            bottom:panelBottom,
+            width:panelWidth,
+            maxHeight:isMobile?"min(62vh, 520px)":"70vh",
             zIndex:259,
             ...card("rgba(77,163,255,.22)"),
             marginBottom:0,
             background:"linear-gradient(180deg, rgba(255,255,255,.98), rgba(244,249,255,.98))",
-            overflow:"hidden"
+            overflow:"hidden",
+            borderRadius:isMobile?"22px":"20px",
+            padding:isMobile?"10px":"12px"
           }}
         >
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", marginBottom:"10px" }}>
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px" }}>
             <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
-              <AIBotAvatar size={44} active />
+              <AIBotAvatar size={isMobile ? 38 : 44} active />
               <div style={{ minWidth:0 }}>
-                <div style={{ ...secTitle, marginBottom:"2px" }}>AI Quick Assist</div>
-                <div style={{ fontSize:"11px", color:"var(--t-muted,#6B7280)" }}>Reusable floating bot for notes, schemes, RTIs, and replies.</div>
+                <div style={{ ...secTitle, marginBottom:"2px", fontSize:isMobile?"12px":"13px" }}>AI Quick Assist</div>
+                <div style={{ fontSize:isMobile?"10px":"11px", color:"var(--t-muted,#6B7280)", lineHeight:1.4 }}>Reusable floating bot for notes, schemes, RTIs, and replies.</div>
               </div>
             </div>
-            <button style={btn("sec", true)} onClick={()=>setOpen(false)}>Close</button>
+            <button style={{ ...btn("sec", true), minWidth:isMobile?"76px":"auto", flexShrink:0 }} onClick={()=>setOpen(false)}>Close</button>
           </div>
-          <div style={{ fontSize:"12px", color:"var(--t-muted,#6B7280)", marginBottom:"10px" }}>
+          <div style={{ fontSize:isMobile?"11px":"12px", color:"var(--t-muted,#6B7280)", marginBottom:"10px", lineHeight:1.5 }}>
             Ask about schemes, governance, speeches, RTIs, citizen issues, or meeting prep.
           </div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginBottom:"10px" }}>
             {prompts.map((prompt)=>(
-              <button key={prompt} onClick={()=>setQ(prompt)} style={{ background:"rgba(77,163,255,.08)", border:"1px solid rgba(77,163,255,.16)", color:"var(--accent,#1B4F8A)", borderRadius:"999px", padding:"6px 10px", fontSize:"11px", cursor:"pointer", textAlign:"left" }}>
+              <button key={prompt} onClick={()=>setQ(prompt)} style={{ background:"rgba(77,163,255,.08)", border:"1px solid rgba(77,163,255,.16)", color:"var(--accent,#1B4F8A)", borderRadius:"999px", padding:isMobile?"8px 10px":"6px 10px", fontSize:isMobile?"10px":"11px", cursor:"pointer", textAlign:"left", maxWidth:isMobile?"100%":"none", lineHeight:1.35 }}>
                 {prompt}
               </button>
             ))}
           </div>
-          <div style={{ display:"flex", gap:"8px", marginBottom:"10px" }}>
-            <input style={{ ...inp, flex:1, minWidth:0 }} placeholder="Type your question…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} />
-            <button style={btn()} onClick={ask} disabled={loading}>{loading ? "…" : "Ask"}</button>
+          <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr auto", gap:"8px", marginBottom:"10px", alignItems:"stretch" }}>
+            <input style={{ ...inp, minWidth:0, width:"100%" }} placeholder="Type your question…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} />
+            <button style={{ ...btn(), width:isMobile?"100%":"auto", minWidth:isMobile?"100%":"88px" }} onClick={ask} disabled={loading}>{loading ? "…" : "Ask"}</button>
           </div>
           {loading && <Spinner text="Thinking…" />}
           {ans && <AIBox text={ans} />}
@@ -5076,27 +5075,27 @@ export default function App() {
       {/* ══ GOV HEADER ══ */}
       <div className="app-shell premium-panel premium-bar" style={{ background:"var(--chrome-bg)", flexShrink:0 }}>
         {/* ── Branding bar ── */}
-        <div className="brand-lockup" style={{ padding:isMobile?"12px 12px 10px":"14px 18px 12px", display:"flex", alignItems:"center", gap:"12px", flexWrap:isMobile?"wrap":"nowrap" }}>
-          <div style={{ width:isMobile?"38px":"50px", height:isMobile?"38px":"50px", background:dark?"linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.08))":"linear-gradient(135deg, #FFFFFF, #EEF5FF)", borderRadius:"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"17px":"22px", flexShrink:0, border:dark?"1px solid rgba(255,255,255,.20)":"1px solid rgba(123,148,181,.18)", boxShadow:dark?"0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.14)":"0 10px 22px rgba(118,144,179,.16), inset 0 1px 0 rgba(255,255,255,.88)" }}>🇮🇳</div>
+        <div className="brand-lockup" style={{ padding:isMobile?"10px 12px 8px":"14px 18px 12px", display:"flex", alignItems:isMobile?"center":"center", gap:isMobile?"10px":"12px", flexWrap:isMobile?"nowrap":"nowrap" }}>
+          <div style={{ width:isMobile?"34px":"50px", height:isMobile?"34px":"50px", background:dark?"linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.08))":"linear-gradient(135deg, #FFFFFF, #EEF5FF)", borderRadius:isMobile?"14px":"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"16px":"22px", flexShrink:0, border:dark?"1px solid rgba(255,255,255,.20)":"1px solid rgba(123,148,181,.18)", boxShadow:dark?"0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.14)":"0 10px 22px rgba(118,144,179,.16), inset 0 1px 0 rgba(255,255,255,.88)" }}>🇮🇳</div>
           <div style={{ minWidth:0, flex:1 }}>
-            <div style={{ fontSize:isMobile?"14px":"20px", fontWeight:"800", color:dark?"#fff":"#17324D", lineHeight:1.2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textShadow:dark?"0 4px 18px rgba(0,0,0,.24)":"none" }}>मंत्री मित्र — Mantri Mitra AI</div>
+            <div style={{ fontSize:isMobile?"12px":"20px", fontWeight:"800", color:dark?"#fff":"#17324D", lineHeight:1.15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textShadow:dark?"0 4px 18px rgba(0,0,0,.24)":"none" }}>Mantri Mitra AI</div>
             {!isMobile && <div style={{ fontSize:"11px", color:dark?"rgba(255,255,255,.82)":"#53708A", marginTop:"3px", letterSpacing:".3px" }}>AI-Powered Constituency Management System</div>}
-            <div style={{ fontSize:isMobile?"10px":"12px", color:"#FF9500", fontWeight:"700", marginTop:"1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{settings.constituency} · {settings.name} ({settings.role})</div>
+            <div style={{ fontSize:isMobile?"9px":"12px", color:"#FF9500", fontWeight:"700", marginTop:"1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{settings.constituency} · {settings.name} ({settings.role})</div>
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:"8px", marginLeft:isMobile?0:"auto", width:isMobile?"100%":"auto", justifyContent:isMobile?"flex-end":"flex-start", flexWrap:"wrap" }}>
-            <button onClick={()=>setShowNotifs(true)} style={{ position:"relative", display:"flex", alignItems:"center", justifyContent:"center", minWidth:isMobile?"50px":"42px", minHeight:isMobile?"50px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:isMobile?"8px 12px":"6px 11px", cursor:"pointer", color:"var(--chrome-text)", gap:"4px", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:isMobile?"6px":"8px", marginLeft:"auto", width:"auto", justifyContent:"flex-end", flexWrap:"nowrap", flexShrink:0 }}>
+            <button onClick={()=>setShowNotifs(true)} style={{ position:"relative", display:"flex", alignItems:"center", justifyContent:"center", width:isMobile?"44px":"42px", minWidth:isMobile?"44px":"42px", height:isMobile?"44px":"40px", minHeight:isMobile?"44px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:"0", cursor:"pointer", color:"var(--chrome-text)", gap:"4px", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
               <span style={{ fontSize:"14px" }}>🔔</span>
               {unreadCount>0 && <span style={{ position:"absolute", top:"-4px", right:"-4px", background:"#EF4444", color:"#fff", fontSize:"9px", fontWeight:"800", padding:"1px 4px", borderRadius:"10px", minWidth:"16px", textAlign:"center" }}>{unreadCount>9?"9+":unreadCount}</span>}
             </button>
 
-            <button onClick={()=>setDark(d=>!d)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"4px", cursor:"pointer", minWidth:isMobile?"50px":"42px", minHeight:isMobile?"50px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:isMobile?"8px 12px":"6px 11px", fontSize:"11px", color:"var(--chrome-text)", fontWeight:"600", flexShrink:0, boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
+            <button onClick={()=>setDark(d=>!d)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"4px", cursor:"pointer", width:isMobile?"44px":"42px", minWidth:isMobile?"44px":"42px", height:isMobile?"44px":"40px", minHeight:isMobile?"44px":"40px", background:dark?"rgba(255,255,255,.16)":"linear-gradient(180deg, #FFFFFF, #EDF4FC)", border:"1px solid var(--chrome-border)", borderRadius:"14px", padding:"0", fontSize:"11px", color:"var(--chrome-text)", fontWeight:"600", flexShrink:0, boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.08)":"0 6px 16px rgba(130,154,188,.14), inset 0 1px 0 rgba(255,255,255,.86)" }}>
               <span>{dark?"☀️":"🌙"}</span>{!isMobile&&<span>{dark?"Light":"Dark"}</span>}
             </button>
 
             <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0, padding:isMobile?"0":"0 0 0 2px" }}>
-              <div style={{ width:"28px", height:"28px", borderRadius:"50%", background:"linear-gradient(135deg,#FF6600,#FF9500)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"800", color:"#fff", flexShrink:0 }}>{(authUser.name||"?")[0].toUpperCase()}</div>
+              <div style={{ width:isMobile?"34px":"28px", height:isMobile?"34px":"28px", borderRadius:"50%", background:"linear-gradient(135deg,#FF6600,#FF9500)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"13px":"12px", fontWeight:"800", color:"#fff", flexShrink:0 }}>{(authUser.name||"?")[0].toUpperCase()}</div>
               {!isMobile && <span style={{ fontSize:"11px", color:"var(--chrome-text)", maxWidth:"120px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{authUser.name}</span>}
-              <button onClick={()=>{setAuthUser(null);setPage("dashboard");}} style={{ cursor:"pointer", background:dark?"rgba(192,57,43,.24)":"linear-gradient(180deg, #FFE7E8, #FFD9DD)", border:dark?"1px solid rgba(252,165,165,.24)":"1px solid rgba(239,68,68,.20)", borderRadius:"14px", padding:isMobile?"8px 12px":"5px 10px", minHeight:isMobile?"50px":"auto", fontSize:"11px", color:dark?"#FECACA":"#B42318", fontWeight:"700", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.05)":"0 6px 14px rgba(239,68,68,.10), inset 0 1px 0 rgba(255,255,255,.54)" }}>Out</button>
+              <button onClick={()=>{setAuthUser(null);setPage("dashboard");}} style={{ cursor:"pointer", background:dark?"rgba(192,57,43,.24)":"linear-gradient(180deg, #FFE7E8, #FFD9DD)", border:dark?"1px solid rgba(252,165,165,.24)":"1px solid rgba(239,68,68,.20)", borderRadius:"14px", padding:isMobile?"0 10px":"5px 10px", width:isMobile?"52px":"auto", minWidth:isMobile?"52px":"auto", height:isMobile?"44px":"auto", minHeight:isMobile?"44px":"auto", fontSize:"11px", color:dark?"#FECACA":"#B42318", fontWeight:"700", boxShadow:dark?"inset 0 1px 0 rgba(255,255,255,.05)":"0 6px 14px rgba(239,68,68,.10), inset 0 1px 0 rgba(255,255,255,.54)" }}>Out</button>
             </div>
           </div>
           {!isMobile && (
