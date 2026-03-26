@@ -660,22 +660,19 @@ function getFileIcon(name) {
 }
 
 async function loadPdfjs() {
-  const candidates = [
-    "pdfjs-dist/legacy/build/pdf.mjs",
-    "pdfjs-dist/build/pdf.mjs",
-    "pdfjs-dist/legacy/build/pdf",
-    "pdfjs-dist/build/pdf",
-    "pdfjs-dist",
-  ];
-  let lastErr = null;
-  for (const mod of candidates) {
+  try {
+    return await import("pdfjs-dist/legacy/build/pdf");
+  } catch (legacyErr) {
     try {
-      return await import(mod);
-    } catch (e) {
-      lastErr = e;
+      return await import("pdfjs-dist/build/pdf");
+    } catch (buildErr) {
+      try {
+        return await import("pdfjs-dist");
+      } catch (rootErr) {
+        throw rootErr || buildErr || legacyErr || new Error("Unable to load pdfjs");
+      }
     }
   }
-  throw lastErr || new Error("Unable to load pdfjs");
 }
 
 function pdfItemsToText(items) {
@@ -4410,7 +4407,7 @@ function FloatingAIAssist({ isMobile=false }) {
   const [q, setQ] = useState("");
   const [ans, setAns] = useState("");
   const [loading, setLoading] = useState(false);
-  const dragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0, moved:false });
+  const dragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0, moved:false, suppressClick:false });
   const panelDragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0 });
   const prompts = [
     "Draft a constituency update for road repair progress",
@@ -4504,9 +4501,15 @@ function FloatingAIAssist({ isMobile=false }) {
   const endDrag = (e) => {
     if (dragState.current.pointerId !== e.pointerId) return;
     e.currentTarget.releasePointerCapture?.(e.pointerId);
-    const moved = dragState.current.moved;
-    dragState.current = { pointerId:null, startX:0, startY:0, originX:0, originY:0, moved:false };
-    if (!moved) setOpen(v=>!v);
+    dragState.current = { ...dragState.current, pointerId:null, startX:0, startY:0, originX:0, originY:0, suppressClick:dragState.current.moved };
+  };
+
+  const handleLauncherClick = () => {
+    if (dragState.current.suppressClick) {
+      dragState.current = { ...dragState.current, moved:false, suppressClick:false };
+      return;
+    }
+    setOpen(v=>!v);
   };
 
   const startPanelDrag = (e) => {
@@ -4541,6 +4544,7 @@ function FloatingAIAssist({ isMobile=false }) {
   return (
     <>
       <button
+        onClick={handleLauncherClick}
         onPointerDown={startDrag}
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
@@ -4588,14 +4592,14 @@ function FloatingAIAssist({ isMobile=false }) {
             padding:isMobile?"10px":"12px"
           }}
         >
-          <div
-            onPointerDown={startPanelDrag}
-            onPointerMove={movePanelDrag}
-            onPointerUp={endPanelDrag}
-            onPointerCancel={endPanelDrag}
-            style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px", cursor:"grab", touchAction:"none", userSelect:"none" }}
-          >
-            <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
+          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px" }}>
+            <div
+              onPointerDown={startPanelDrag}
+              onPointerMove={movePanelDrag}
+              onPointerUp={endPanelDrag}
+              onPointerCancel={endPanelDrag}
+              style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0, cursor:"grab", touchAction:"none", userSelect:"none", flex:1 }}
+            >
               <AIBotAvatar size={isMobile ? 38 : 44} active />
               <div style={{ minWidth:0 }}>
                 <div style={{ ...secTitle, marginBottom:"2px", fontSize:isMobile?"12px":"13px" }}>AI Quick Assist</div>
@@ -5240,10 +5244,10 @@ export default function App() {
       <div className="app-shell premium-panel premium-bar" style={{ background:"var(--chrome-bg)", flexShrink:0 }}>
         {/* ── Branding bar ── */}
         <div className="brand-lockup" style={{ padding:isMobile?"10px 12px 8px":"14px 18px 12px", display:"flex", alignItems:isMobile?"center":"center", gap:isMobile?"10px":"12px", flexWrap:isMobile?"nowrap":"nowrap" }}>
-          <div style={{ width:isMobile?"34px":"50px", height:isMobile?"34px":"50px", background:dark?"linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.08))":"linear-gradient(135deg, #FFFFFF, #EEF5FF)", borderRadius:isMobile?"14px":"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"16px":"22px", flexShrink:0, border:dark?"1px solid rgba(255,255,255,.20)":"1px solid rgba(123,148,181,.18)", boxShadow:dark?"0 10px 24px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.14)":"0 10px 22px rgba(118,144,179,.16), inset 0 1px 0 rgba(255,255,255,.88)" }}>🇮🇳</div>
+          <div style={{ width:isMobile?"34px":"50px", height:isMobile?"34px":"50px", background:"linear-gradient(135deg, #FFFFFF, #EEF5FF)", borderRadius:isMobile?"14px":"16px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:isMobile?"16px":"22px", flexShrink:0, border:"1px solid rgba(220,232,246,.42)", boxShadow:"0 10px 22px rgba(4,21,43,.18), inset 0 1px 0 rgba(255,255,255,.96)" }}>🇮🇳</div>
           <div style={{ minWidth:0, flex:1 }}>
-            <div style={{ fontSize:isMobile?"12px":"20px", fontWeight:"800", color:dark?"#fff":"#17324D", lineHeight:1.15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textShadow:dark?"0 4px 18px rgba(0,0,0,.24)":"none" }}>Mantri Mitra AI</div>
-            {!isMobile && <div style={{ fontSize:"11px", color:dark?"rgba(255,255,255,.82)":"#53708A", marginTop:"3px", letterSpacing:".3px" }}>AI-Powered Constituency Management System</div>}
+            <div style={{ fontSize:isMobile?"12px":"20px", fontWeight:"800", color:"#F8FBFF", lineHeight:1.15, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textShadow:"0 4px 18px rgba(0,0,0,.24)" }}>Mantri Mitra AI</div>
+            {!isMobile && <div style={{ fontSize:"11px", color:"rgba(232,241,250,.82)", marginTop:"3px", letterSpacing:".3px" }}>AI-Powered Constituency Management System</div>}
             <div style={{ fontSize:isMobile?"9px":"12px", color:"#FF9500", fontWeight:"700", marginTop:"1px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{settings.constituency} · {settings.name} ({settings.role})</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:isMobile?"6px":"8px", marginLeft:"auto", width:"auto", justifyContent:"flex-end", flexWrap:"nowrap", flexShrink:0 }}>
