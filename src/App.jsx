@@ -4406,9 +4406,12 @@ function AIBotAvatar({ size=56, active=false }) {
 
 function FloatingAIAssist({ isMobile=false }) {
   const [open, setOpen] = useState(false);
+  const [fullPage, setFullPage] = useState(false);
   const [q, setQ] = useState("");
   const [ans, setAns] = useState("");
   const [loading, setLoading] = useState(false);
+  const dragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0, moved:false });
+  const panelDragState = useRef({ pointerId:null, startX:0, startY:0, originX:0, originY:0 });
   const prompts = [
     "Draft a constituency update for road repair progress",
     "Summarize the top action items from today's review meeting",
@@ -4428,18 +4431,124 @@ function FloatingAIAssist({ isMobile=false }) {
     setLoading(false);
   };
 
+  const openFullPage = () => {
+    setOpen(false);
+    setFullPage(true);
+  };
+
   const launcherSize = isMobile ? 56 : 64;
-  const panelWidth = isMobile ? "calc(100vw - 16px)" : "360px";
-  const panelBottom = isMobile ? "154px" : "90px";
+  const defaultRight = isMobile ? 14 : 20;
+  const defaultBottom = isMobile ? 94 : 22;
+  const [launcherPos, setLauncherPos] = useState(() => ({ x:null, y:null }));
+  const [panelPos, setPanelPos] = useState(() => ({ x:null, y:null }));
+  const viewport = typeof window !== "undefined" ? { w: window.innerWidth, h: window.innerHeight } : { w: 390, h: 844 };
+  const currentX = launcherPos.x ?? (viewport.w - launcherSize - defaultRight);
+  const currentY = launcherPos.y ?? (viewport.h - launcherSize - defaultBottom);
+  const panelPixelWidth = isMobile ? Math.max(280, viewport.w - 16) : 360;
+  const panelDefaultX = isMobile ? 8 : Math.max(12, currentX - panelPixelWidth + launcherSize);
+  const panelDefaultY = isMobile ? Math.max(96, currentY - 360) : Math.max(88, currentY - 260);
+  const panelX = panelPos.x ?? panelDefaultX;
+  const panelY = panelPos.y ?? panelDefaultY;
+  const panelWidth = `${panelPixelWidth}px`;
+
+  useEffect(() => {
+    const handleResize = () => {
+      setLauncherPos(prev => {
+        if (prev.x == null || prev.y == null) return prev;
+        const maxX = Math.max(8, window.innerWidth - launcherSize - 8);
+        const maxY = Math.max(8, window.innerHeight - launcherSize - 90);
+        return {
+          x: Math.min(Math.max(8, prev.x), maxX),
+          y: Math.min(Math.max(8, prev.y), maxY),
+        };
+      });
+      setPanelPos(prev => {
+        if (prev.x == null || prev.y == null) return prev;
+        const maxX = Math.max(8, window.innerWidth - panelPixelWidth - 8);
+        const maxY = Math.max(70, window.innerHeight - 220);
+        return {
+          x: Math.min(Math.max(8, prev.x), maxX),
+          y: Math.min(Math.max(70, prev.y), maxY),
+        };
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [launcherSize, panelPixelWidth]);
+
+  const startDrag = (e) => {
+    dragState.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: currentX,
+      originY: currentY,
+      moved: false,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const moveDrag = (e) => {
+    if (dragState.current.pointerId !== e.pointerId) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragState.current.moved = true;
+    const maxX = Math.max(8, window.innerWidth - launcherSize - 8);
+    const maxY = Math.max(8, window.innerHeight - launcherSize - 90);
+    setLauncherPos({
+      x: Math.min(Math.max(8, dragState.current.originX + dx), maxX),
+      y: Math.min(Math.max(8, dragState.current.originY + dy), maxY),
+    });
+  };
+
+  const endDrag = (e) => {
+    if (dragState.current.pointerId !== e.pointerId) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    const moved = dragState.current.moved;
+    dragState.current = { pointerId:null, startX:0, startY:0, originX:0, originY:0, moved:false };
+    if (!moved) setOpen(v=>!v);
+  };
+
+  const startPanelDrag = (e) => {
+    panelDragState.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: panelX,
+      originY: panelY,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const movePanelDrag = (e) => {
+    if (panelDragState.current.pointerId !== e.pointerId) return;
+    const dx = e.clientX - panelDragState.current.startX;
+    const dy = e.clientY - panelDragState.current.startY;
+    const maxX = Math.max(8, window.innerWidth - panelPixelWidth - 8);
+    const maxY = Math.max(70, window.innerHeight - 220);
+    setPanelPos({
+      x: Math.min(Math.max(8, panelDragState.current.originX + dx), maxX),
+      y: Math.min(Math.max(70, panelDragState.current.originY + dy), maxY),
+    });
+  };
+
+  const endPanelDrag = (e) => {
+    if (panelDragState.current.pointerId !== e.pointerId) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    panelDragState.current = { pointerId:null, startX:0, startY:0, originX:0, originY:0 };
+  };
 
   return (
     <>
       <button
-        onClick={()=>setOpen(v=>!v)}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         style={{
           position:"fixed",
-          right:isMobile?"14px":"20px",
-          bottom:isMobile?"94px":"22px",
+          left:currentX+"px",
+          top:currentY+"px",
           zIndex:260,
           display:"flex",
           alignItems:"center",
@@ -4454,7 +4563,9 @@ function FloatingAIAssist({ isMobile=false }) {
           fontWeight:"800",
           fontSize:"13px",
           boxShadow:"0 18px 40px rgba(29,78,216,.28), inset 0 1px 0 rgba(255,255,255,.18)",
-          cursor:"pointer"
+          cursor:"grab",
+          touchAction:"none",
+          userSelect:"none"
         }}
       >
         <AIBotAvatar size={isMobile ? 40 : 44} active={open} />
@@ -4464,9 +4575,8 @@ function FloatingAIAssist({ isMobile=false }) {
         <div
           style={{
             position:"fixed",
-            right:isMobile?"8px":"20px",
-            left:isMobile?"8px":"auto",
-            bottom:panelBottom,
+            left:panelX+"px",
+            top:panelY+"px",
             width:panelWidth,
             maxHeight:isMobile?"min(62vh, 520px)":"70vh",
             zIndex:259,
@@ -4478,7 +4588,13 @@ function FloatingAIAssist({ isMobile=false }) {
             padding:isMobile?"10px":"12px"
           }}
         >
-          <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px" }}>
+          <div
+            onPointerDown={startPanelDrag}
+            onPointerMove={movePanelDrag}
+            onPointerUp={endPanelDrag}
+            onPointerCancel={endPanelDrag}
+            style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:"10px", marginBottom:"10px", cursor:"grab", touchAction:"none", userSelect:"none" }}
+          >
             <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
               <AIBotAvatar size={isMobile ? 38 : 44} active />
               <div style={{ minWidth:0 }}>
@@ -4486,7 +4602,10 @@ function FloatingAIAssist({ isMobile=false }) {
                 <div style={{ fontSize:isMobile?"10px":"11px", color:"var(--t-muted,#6B7280)", lineHeight:1.4 }}>Reusable floating bot for notes, schemes, RTIs, and replies.</div>
               </div>
             </div>
-            <button style={{ ...btn("sec", true), minWidth:isMobile?"76px":"auto", flexShrink:0 }} onClick={()=>setOpen(false)}>Close</button>
+            <div style={{ display:"flex", alignItems:"center", gap:"6px", flexShrink:0 }}>
+              <button style={{ ...btn("sec", true), minWidth:isMobile?"84px":"auto" }} onClick={openFullPage}>Open Full</button>
+              <button style={{ ...btn("sec", true), minWidth:isMobile?"76px":"auto" }} onClick={()=>setOpen(false)}>Close</button>
+            </div>
           </div>
           <div style={{ fontSize:isMobile?"11px":"12px", color:"var(--t-muted,#6B7280)", marginBottom:"10px", lineHeight:1.5 }}>
             Ask about schemes, governance, speeches, RTIs, citizen issues, or meeting prep.
@@ -4504,6 +4623,51 @@ function FloatingAIAssist({ isMobile=false }) {
           </div>
           {loading && <Spinner text="Thinking…" />}
           {ans && <AIBox text={ans} />}
+        </div>
+      )}
+
+      {fullPage && (
+        <div style={{ position:"fixed", inset:0, zIndex:320, background:isMobile?"rgba(238,244,251,.98)":"rgba(238,244,251,.92)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", padding:isMobile?"10px":"18px", display:"flex", flexDirection:"column" }}>
+          <div style={{ ...card("rgba(77,163,255,.22)"), marginBottom:0, flex:1, display:"flex", flexDirection:"column", background:"linear-gradient(180deg, rgba(255,255,255,.99), rgba(244,249,255,.98))" }}>
+            <div style={{ display:"flex", alignItems:isMobile?"flex-start":"center", justifyContent:"space-between", gap:"10px", marginBottom:"12px", flexWrap:isMobile?"wrap":"nowrap" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:"12px", minWidth:0 }}>
+                <AIBotAvatar size={isMobile ? 42 : 50} active />
+                <div style={{ minWidth:0 }}>
+                  <div style={{ ...secTitle, marginBottom:"4px", fontSize:isMobile?"14px":"15px" }}>AI Quick Assist</div>
+                  <div style={{ fontSize:isMobile?"11px":"12px", color:"var(--t-muted,#6B7280)", lineHeight:1.5 }}>Full-page AI workspace for schemes, speeches, RTIs, summaries, and constituency support.</div>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
+                <button style={btn("sec", true)} onClick={()=>{ setFullPage(false); setOpen(true); }}>Back To Float</button>
+                <button style={btn("sec", true)} onClick={()=>setFullPage(false)}>Close</button>
+              </div>
+            </div>
+            <div style={{ fontSize:isMobile?"12px":"13px", color:"var(--t-muted,#6B7280)", marginBottom:"12px", lineHeight:1.6 }}>
+              Ask about governance, government schemes, constituency issues, RTIs, speech drafting, meeting prep, and official communication.
+            </div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:"8px", marginBottom:"12px" }}>
+              {prompts.map((prompt)=>(
+                <button key={prompt} onClick={()=>setQ(prompt)} style={{ background:"rgba(77,163,255,.08)", border:"1px solid rgba(77,163,255,.16)", color:"var(--accent,#1B4F8A)", borderRadius:"999px", padding:isMobile?"9px 12px":"8px 12px", fontSize:isMobile?"11px":"12px", cursor:"pointer", textAlign:"left", lineHeight:1.35 }}>
+                  {prompt}
+                </button>
+              ))}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:isMobile?"1fr":"1fr auto", gap:"10px", marginBottom:"12px" }}>
+              <input style={{ ...inp, minWidth:0, width:"100%", minHeight:isMobile?"52px":"48px" }} placeholder="Type your question…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} />
+              <button style={{ ...btn(), minWidth:isMobile?"100%":"110px", width:isMobile?"100%":"auto" }} onClick={ask} disabled={loading}>{loading ? "Thinking..." : "Ask AI"}</button>
+            </div>
+            {loading && <Spinner text="Thinking…" />}
+            <div style={{ flex:1, minHeight:0, overflowY:"auto", paddingRight:isMobile?"0":"2px" }}>
+              {ans ? <AIBox text={ans} /> : (
+                <div style={{ ...card("rgba(77,163,255,.16)"), background:"rgba(77,163,255,.05)", marginBottom:0 }}>
+                  <div style={{ fontSize:isMobile?"13px":"14px", fontWeight:"700", color:"var(--t-text,#0F172A)", marginBottom:"6px" }}>Ready to help</div>
+                  <div style={{ fontSize:isMobile?"12px":"13px", color:"var(--t-muted,#6B7280)", lineHeight:1.7 }}>
+                    Use this expanded view when you want longer AI responses, better readability, and more space for drafting or document-related questions.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </>
@@ -4954,12 +5118,12 @@ export default function App() {
           --t-text:${T.text};--t-muted:${T.muted};
           --t-inp:${T.inp};--t-inp-border:${T.inpBorder};
           --accent:${uiAccent};
-          --chrome-bg:${dark ? "rgba(5,10,20,.34)" : "linear-gradient(180deg, rgba(255,255,255,.98), rgba(241,247,255,.96))"};
-          --chrome-strong:${dark ? "rgba(15,52,96,.86)" : "linear-gradient(90deg, rgba(223,235,250,.96), rgba(235,243,252,.98))"};
-          --chrome-border:${dark ? "rgba(255,255,255,.14)" : "rgba(112,138,172,.26)"};
-          --chrome-text:${dark ? "rgba(255,255,255,.94)" : "#15314F"};
-          --chrome-muted:${dark ? "rgba(255,255,255,.72)" : "#5F748C"};
-          --chrome-soft:${dark ? "rgba(255,255,255,.10)" : "rgba(255,255,255,.88)"};
+          --chrome-bg:${dark ? "linear-gradient(180deg, rgba(8,27,52,.98), rgba(11,34,64,.96))" : "linear-gradient(180deg, rgba(14,48,92,.98), rgba(21,63,116,.96))"};
+          --chrome-strong:${dark ? "linear-gradient(90deg, rgba(11,36,68,.96), rgba(16,50,92,.94))" : "linear-gradient(90deg, rgba(234,241,250,.96), rgba(223,234,247,.98))"};
+          --chrome-border:${dark ? "rgba(170,198,230,.16)" : "rgba(120,151,190,.28)"};
+          --chrome-text:${dark ? "rgba(255,255,255,.96)" : "#FFFFFF"};
+          --chrome-muted:${dark ? "rgba(220,232,246,.72)" : "rgba(255,255,255,.76)"};
+          --chrome-soft:${dark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.08)"};
           --font-base:${fontBase};
           --spacing:${spacingScale};
         }
@@ -5050,15 +5214,15 @@ export default function App() {
           background-size:80px 80px;mask-image:radial-gradient(circle at center, rgba(0,0,0,.72), transparent 85%);opacity:${dark ? ".11" : ".10"};animation:driftGlow 18s ease-in-out infinite}
         .app-ambient-orb{position:absolute;border-radius:999px;filter:blur(${dark ? "70px" : "85px"});opacity:${dark ? ".85" : ".48"};animation:floatOrb 15s ease-in-out infinite}
         .app-shell{position:relative;z-index:1}
-        .premium-panel{background:${dark ? "linear-gradient(180deg, var(--chrome-soft), rgba(255,255,255,.08))" : "linear-gradient(180deg, rgba(255,255,255,.98), rgba(245,249,255,.94))"};border:1px solid var(--chrome-border);box-shadow:${dark ? "0 18px 40px rgba(2,8,23,.12)" : "0 18px 40px rgba(110,136,173,.14), 0 3px 12px rgba(148,163,184,.08)"} , inset 0 1px 0 rgba(255,255,255,.28);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%)}
+        .premium-panel{background:${dark ? "linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04))" : "linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05))"};border:1px solid var(--chrome-border);box-shadow:${dark ? "0 18px 40px rgba(2,8,23,.18)" : "0 18px 40px rgba(33,73,128,.18), 0 3px 12px rgba(15,23,42,.08)"} , inset 0 1px 0 rgba(255,255,255,.18);backdrop-filter:blur(22px) saturate(155%);-webkit-backdrop-filter:blur(22px) saturate(155%)}
         .premium-bar{border-radius:0 0 22px 22px;overflow:hidden}
         .premium-subbar{border-radius:18px;margin:8px 14px 0;padding:6px 14px;box-shadow:${dark ? "0 10px 26px rgba(2,8,23,.10), inset 0 1px 0 rgba(255,255,255,.10)" : "0 12px 24px rgba(121,145,180,.12), inset 0 1px 0 rgba(255,255,255,.48)"}}
         .brand-lockup{position:relative}
         .brand-lockup::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg, rgba(255,154,60,.0), rgba(255,154,60,.55), rgba(255,255,255,.32), rgba(52,211,153,.55), rgba(52,211,153,0))}
         .desktop-nav-shell{margin:10px 14px 12px;padding:8px;display:flex;gap:8px;overflow-x:auto;border-radius:20px}
         .desktop-nav-btn{padding:10px 14px;cursor:pointer;font-family:'Noto Sans', Arial, sans-serif;color:var(--chrome-muted);background:transparent;border:1px solid transparent;border-radius:14px;display:flex;align-items:center;gap:8px;flex-shrink:0;transition:all .18s;white-space:nowrap;position:relative}
-        .desktop-nav-btn:hover{background:${dark ? "rgba(255,255,255,.16)" : "rgba(232,240,250,.92)"};color:var(--chrome-text);border-color:var(--chrome-border);transform:translateY(-1px)}
-        .desktop-nav-btn.active{color:var(--chrome-text);background:linear-gradient(180deg, rgba(77,163,255,.24), rgba(77,163,255,.10));border-color:rgba(77,163,255,.34);box-shadow:${dark ? "0 12px 26px rgba(77,163,255,.14)" : "0 12px 22px rgba(77,163,255,.14), inset 0 1px 0 rgba(255,255,255,.36)"}}
+        .desktop-nav-btn:hover{background:${dark ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.12)"};color:var(--chrome-text);border-color:var(--chrome-border);transform:translateY(-1px)}
+        .desktop-nav-btn.active{color:var(--chrome-text);background:linear-gradient(180deg, rgba(77,163,255,.24), rgba(255,255,255,.10));border-color:rgba(255,255,255,.18);box-shadow:${dark ? "0 12px 26px rgba(77,163,255,.14)" : "0 12px 22px rgba(15,23,42,.16), inset 0 1px 0 rgba(255,255,255,.22)"}}
         .desktop-nav-btn.active::after{content:"";position:absolute;left:14px;right:14px;bottom:6px;height:2px;border-radius:999px;background:linear-gradient(90deg, #FF9A3C, rgba(255,255,255,.95), #34D399)}
         .mobile-nav-btn{position:relative;overflow:hidden}
         .mobile-nav-btn.active{background:linear-gradient(180deg, rgba(77,163,255,.16), rgba(77,163,255,.06));color:var(--chrome-text);border-top:2px solid rgba(77,163,255,.9)}
@@ -5109,10 +5273,10 @@ export default function App() {
         </div>
 
         {/* ── Top utility bar ── */}
-        <div style={{ background:"var(--chrome-strong)", padding:"8px 14px", display:"flex", alignItems:"center", gap:"10px", borderTop:"1px solid var(--chrome-border)", borderBottom:"1px solid var(--chrome-border)" }}>
-          <span style={{ fontSize:isMobile?"10px":"11px", color:"var(--chrome-muted)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{getGovLabel(settings)} · MPA</span>
+        <div style={{ background:"var(--chrome-strong)", padding:"8px 14px", display:"flex", alignItems:"center", gap:"10px", borderTop:"1px solid rgba(255,255,255,.10)", borderBottom:"1px solid rgba(255,255,255,.10)" }}>
+          <span style={{ fontSize:isMobile?"10px":"11px", color:dark?"var(--chrome-muted)":"#34506F", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontWeight:"600" }}>{getGovLabel(settings)} · MPA</span>
           <div style={{ flex:1 }}/>
-          {!isMobile && <span style={{ fontSize:"11px", color:"var(--chrome-muted)", fontFamily:"monospace" }}>
+          {!isMobile && <span style={{ fontSize:"11px", color:dark?"var(--chrome-muted)":"#486684", fontFamily:"monospace" }}>
             🗓 {liveNow.toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"})} &nbsp; 🕐 {liveNow.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:true})} IST
           </span>}
         </div>
@@ -5178,7 +5342,7 @@ export default function App() {
       {/* ══ FOOTER — desktop only ══ */}
       {!isMobile && <div className="app-shell" style={{ background:"rgba(8,16,29,.48)", padding:"6px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", flexShrink:0, borderTop:"1px solid rgba(255,154,60,.32)", backdropFilter:"blur(18px)", WebkitBackdropFilter:"blur(18px)" }}>
         <div style={{ fontSize:"10px", color:"rgba(255,255,255,.6)" }}>© 2026 Mantri Mitra AI · NIC Powered · IT Act 2000 · Data persisted locally</div>
-        <div style={{ fontSize:"10px", color:"rgba(255,165,0,.9)", fontWeight:"700" }}>⚡ Made by Team Daksha — v2.0</div>
+        <div style={{ fontSize:"10px", color:"rgba(255,165,0,.9)", fontWeight:"700" }}>⚡ Made By Team Daksha</div>
       </div>}
     </div>
   );
