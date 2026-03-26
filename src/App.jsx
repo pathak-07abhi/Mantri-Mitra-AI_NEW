@@ -4495,8 +4495,8 @@ function FloatingAIAssist({ isMobile=false }) {
       dragState.current = { ...dragState.current, moved:false, suppressClick:false };
       return;
     }
-    setOpen(false);
-    setFullPage(true);
+    setFullPage(false);
+    setOpen(v=>!v);
   };
 
   return (
@@ -4539,8 +4539,8 @@ function FloatingAIAssist({ isMobile=false }) {
             position:"fixed",
             left:isMobile ? "8px" : "auto",
             right:isMobile ? "8px" : "20px",
-            top:isMobile ? "88px" : "104px",
-            bottom:"auto",
+            top:isMobile ? "auto" : "104px",
+            bottom:isMobile ? "86px" : "auto",
             transform:"none",
             width:isMobile ? "auto" : panelWidth,
             maxHeight:isMobile?"min(62vh, 520px)":"70vh",
