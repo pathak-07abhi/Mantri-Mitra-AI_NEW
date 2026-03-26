@@ -1,35 +1,294 @@
-# मंत्री मित्र — Mantri Mitra AI v2.0
+# 🇮🇳 Mantri Mitra AI
+### Ministerial Intelligence Assistant for Public Leaders
 
-AI-Powered Constituency Management System for Indian MLAs/MPs/Public Officials
+![AI Powered](https://img.shields.io/badge/AI-Powered-blue)
+![React](https://img.shields.io/badge/Frontend-React-61DAFB)
+![Vite](https://img.shields.io/badge/Build-Vite-purple)
+![Vercel](https://img.shields.io/badge/Deployment-Vercel-black)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Prototype-orange)
 
-## 🆕 What's New in v2.0
+---
 
-### ✅ Fixes & Core Improvements
-- **localStorage Persistence** — All data (issues, meetings, speeches, documents, calendar, settings, voter DB, RTIs) now survives page refresh via `usePersist()` hook
-- **Mobile-first Redesign** — Dedicated bottom navigation bar on mobile, larger 44px touch targets, smooth page transitions, iOS safe-area insets
+## 🏛 Overview
 
-### 🚀 New Features
-- **👥 Voter / Contact Database** — Store and manage constituency contacts with ward, category, tag (Supporter/Neutral/Volunteer etc.), pending issues, and direct Call/SMS/WhatsApp actions
-- **⚖️ RTI Tracker** — File and track Right to Information requests with department, deadlines, overdue alerts, status updates (Pending → First Appeal → CIC Filed)
-- **🔔 Notification Center** — Bell icon in header shows unread count; auto-alerts for critical issues and overdue RTIs; tap to mark read/dismiss
-- **💬 WhatsApp / SMS Share** — Share speeches and document summaries via WhatsApp, SMS, or copy-to-clipboard; available on all speech and document cards
+**Mantri Mitra AI** is an AI-powered digital assistant designed to support **Indian MLAs, MPs, and government administrators** in managing constituency issues, documents, and public communication.
 
-### 📱 Mobile UX
-- Bottom tab navigation (Dashboard, Issues, Speeches, Voters, More)
-- Quick-action horizontal scroll row on Dashboard
-- Clickable stat cards navigate directly to their pages
-- All pages have proper bottom padding to avoid bottom nav overlap
-- Settings > Data > Quick Navigation grid for accessing all 9 sections
+The platform functions as a **governance intelligence system** that helps leaders:
 
-## Setup
+- analyze citizen complaints
+- summarize government documents
+- generate official speeches
+- manage meetings
+- gain insights from constituency data
+
+The goal is to enable **faster, smarter, and more transparent governance.**
+
+---
+
+# 🎯 Vision
+
+Public leaders receive thousands of:
+
+- complaints
+- reports
+- documents
+- meeting discussions
+
+Managing this information manually is difficult.
+
+**Mantri Mitra AI transforms governance workflows using Artificial Intelligence**, allowing decision-makers to focus on solving problems instead of processing information.
+
+---
+
+# 🚀 Core Features
+
+## 📊 Constituency Issue Tracker
+Track citizen complaints and automatically generate **AI-based resolution strategies**.
+
+## 📄 Document Intelligence
+Upload government files and instantly:
+
+- Summarize documents
+- Translate documents
+- Ask questions about the content
+- Generate official briefing notes
+
+## 🗣 Speech Generator
+Create speeches and public announcements in **multiple Indian languages**.
+
+## 📝 Meeting Intelligence
+Generate:
+
+- Meeting agenda
+- Summary notes
+- Key decisions
+- Action points
+
+## 📈 Governance Dashboard
+Visual insights for:
+
+- Public sentiment
+- Issue trends
+- Administrative priorities
+
+## 🔐 Secure Authentication
+Secure login using **SHA-256 hashing with Web Crypto API**.
+
+## 📱 Mobile Friendly
+Fully responsive for:
+
+- Desktop
+- Tablet
+- Mobile devices
+
+## 🌙 Dark Mode
+Modern UI with built-in dark mode.
+
+---
+
+# 🧠 AI Workflow
+
+```mermaid
+graph TD
+
+A[Citizen Complaints] --> B[AI Processing Engine]
+B --> C[Issue Classification]
+B --> D[Sentiment Analysis]
+B --> E[Document Intelligence]
+
+C --> F[Resolution Strategy]
+D --> G[Public Sentiment Dashboard]
+E --> H[Summary / Insights]
+
+F --> I[Government Action]
+G --> I
+H --> I
+```
+
+---
+
+# 🏗 System Architecture
+
+```mermaid
+graph LR
+
+User --> Frontend
+Frontend --> AI_API
+Frontend --> Auth_Module
+Frontend --> Storage
+
+AI_API --> Claude_AI
+Storage --> SessionStorage
+
+Frontend --> Vercel
+```
+
+---
+
+# 🧰 Technology Stack
+
+| Layer | Technology |
+|------|-------------|
+| Frontend | React 18 |
+| Build Tool | Vite |
+| AI Engine | Claude (Anthropic) |
+| Styling | CSS |
+| Authentication | Web Crypto API |
+| Storage | sessionStorage |
+| Deployment | Vercel |
+| Fonts | Google Fonts |
+
+---
+
+# 📁 Project Structure
+
+```
+mantri-mitra-ai/
+│
+├── index.html
+├── package.json
+├── vite.config.js
+├── vercel.json
+├── .env.example
+├── .gitignore
+│
+└── src/
+    ├── main.jsx
+    └── App.jsx
+```
+
+---
+
+# ⚙️ Local Development
+
+Install dependencies
+
 ```bash
 npm install
-# Add VITE_OPENROUTER_KEY to .env
+```
+
+Create environment file
+
+```
+.env.local
+```
+
+Add your API key
+
+```
+VITE_ANTHROPIC_KEY=your_api_key_here
+```
+
+Start development server
+
+```bash
 npm run dev
 ```
 
-## Deploy
-Push to GitHub and connect to Vercel. Add `VITE_OPENROUTER_KEY` in Vercel environment variables.
+Open in browser
+
+```
+http://localhost:3000
+```
 
 ---
-© 2026 Team Daksha · Built with React + Vite
+
+# 🌐 Deployment
+
+### Deploy using Vercel
+
+1. Upload project to GitHub
+2. Open **vercel.com**
+3. Import GitHub repository
+4. Add environment variable:
+
+```
+VITE_ANTHROPIC_KEY
+```
+
+5. Click **Deploy**
+
+The application will be live in a few minutes.
+
+---
+
+# 🖼 Feature Screenshots
+
+You can add screenshots here after deployment.
+
+```
+/screenshots
+   dashboard.png
+   speech-generator.png
+   issue-tracker.png
+```
+
+Example:
+
+```
+![Dashboard](screenshots/dashboard.png)
+```
+
+---
+
+# 🎯 Use Cases
+
+Mantri Mitra AI can assist:
+
+- Members of Parliament (MPs)
+- Members of Legislative Assembly (MLAs)
+- District Magistrates
+- Government Officers
+- Policy Analysts
+- Civic Governance Platforms
+
+---
+
+# ⚠️ Production Recommendations
+
+For real government deployment:
+
+- Move AI API calls to **backend server**
+- Implement **database storage**
+- Use **role-based authentication**
+- Enable **secure logging**
+- Integrate **government data APIs**
+
+---
+
+# 🤝 Contributing
+
+Contributions are welcome.
+
+Steps to contribute:
+
+1. Fork the repository
+2. Create a new branch
+3. Commit your changes
+4. Submit a pull request
+
+---
+
+# 📜 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+# 👨‍💻 Developed By
+
+## 🚀 Team Daksha
+
+A technology team focused on building **AI-powered solutions for governance, public systems, and digital administration.**
+
+---
+
+# 🇮🇳 Motto
+
+**सत्यमेव जयते**  
+Truth Alone Triumphs
+
+---
+
+⭐ If you find this project useful, please consider giving the repository a **star**.
